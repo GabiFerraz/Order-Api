@@ -17,6 +17,7 @@ public class RabbitMQConfig {
   public static final String REFUND_PAYMENT_QUEUE = "refund-payment";
   public static final String STOCK_RESERVED_QUEUE = "stock-reserved";
   public static final String PAYMENT_PROCESSED_QUEUE = "payment-processed";
+  public static final String ORDER_RECEIVED_QUEUE = "order-received";
 
   @Bean
   public TopicExchange orderExchange() {
@@ -54,6 +55,11 @@ public class RabbitMQConfig {
   }
 
   @Bean
+  public Queue orderReceivedQueue() {
+    return new Queue(ORDER_RECEIVED_QUEUE, true);
+  }
+
+  @Bean
   public Binding reserveStockBinding(Queue reserveStockQueue, TopicExchange orderExchange) {
     return BindingBuilder.bind(reserveStockQueue).to(orderExchange).with(RESERVE_STOCK_QUEUE);
   }
@@ -83,5 +89,10 @@ public class RabbitMQConfig {
     return BindingBuilder.bind(paymentProcessedQueue)
         .to(orderExchange)
         .with(PAYMENT_PROCESSED_QUEUE);
+  }
+
+  @Bean
+  public Binding orderReceivedBinding(Queue orderReceivedQueue, TopicExchange orderExchange) {
+    return BindingBuilder.bind(orderReceivedQueue).to(orderExchange).with(ORDER_RECEIVED_QUEUE);
   }
 }
