@@ -65,11 +65,11 @@ public class OrderController {
     final var paymentDto =
         new PaymentDetailsDto(payment.getPaymentMethod().name(), payment.getCardNumber());
 
-    return new OrderDto(
-        order.getProductSku(),
-        order.getProductQuantity(),
-        order.getClientCpf(),
-        order.getStatus().name(),
-        paymentDto);
+    return OrderDto.builder()
+        .productSku(order.getProductSku())
+        .productQuantity(order.getProductQuantity())
+        .clientCpf(order.getClientCpf())
+        .paymentDetails(paymentDto)
+        .build();
   }
 }
