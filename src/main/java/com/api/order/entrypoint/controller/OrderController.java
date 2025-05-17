@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/order")
+@RequestMapping("/api/orders")
 public class OrderController {
 
   private static final String ORDER_NOT_FOUND_MESSAGE = "Order with id=[%s] not found.";

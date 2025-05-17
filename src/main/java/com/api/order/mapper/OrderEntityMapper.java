@@ -21,6 +21,7 @@ public class OrderEntityMapper {
             .productQuantity(domain.getProductQuantity())
             .clientCpf(domain.getClientCpf())
             .status(domain.getStatus().name())
+            .totalAmount(domain.getTotalAmount())
             .build();
 
     orderEntity.setPaymentDetail(paymentDetailsEntity);
@@ -39,6 +40,7 @@ public class OrderEntityMapper {
         .productQuantity(entity.getProductQuantity())
         .clientCpf(entity.getClientCpf())
         .status(OrderStatus.fromName(entity.getStatus()))
+        .totalAmount(entity.getTotalAmount())
         .paymentDetails(paymentDetails)
         .build();
   }

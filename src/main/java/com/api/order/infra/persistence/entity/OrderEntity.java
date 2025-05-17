@@ -1,6 +1,7 @@
 package com.api.order.infra.persistence.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.*;
 
 @Entity
@@ -27,6 +28,9 @@ public class OrderEntity {
 
   @Column(name = "status", nullable = false)
   private String status;
+
+  @Column(name = "total_amount", nullable = false)
+  private BigDecimal totalAmount;
 
   @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "payment_details_id", referencedColumnName = "id", nullable = false)

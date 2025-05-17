@@ -8,7 +8,8 @@ import java.util.Arrays;
 public enum PaymentStatus {
   PENDING,
   APPROVED,
-  REJECTED;
+  REJECTED,
+  REFUNDED;
 
   public static PaymentStatus fromName(final String status) {
     return Arrays.stream(values())

@@ -4,7 +4,9 @@ import static java.lang.String.format;
 
 import com.api.order.core.domain.exception.DomainException;
 import com.api.order.core.domain.valueobject.OrderStatus;
+import com.api.order.core.domain.valueobject.PaymentStatus;
 import com.api.order.core.domain.valueobject.ValidationDomain;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +34,7 @@ public class Order {
   private String clientCpf;
   private OrderStatus status;
   private PaymentDetails paymentDetails;
+  private BigDecimal totalAmount;
 
   public Order() {}
 
@@ -41,9 +44,10 @@ public class Order {
       final Integer productQuantity,
       final String clientCpf,
       final OrderStatus status,
-      final PaymentDetails paymentDetails) {
+      final PaymentDetails paymentDetails,
+      final BigDecimal totalAmount) {
 
-    validateDomain(productSku, productQuantity, clientCpf);
+    validateDomain(productSku, productQuantity, clientCpf, totalAmount);
 
     this.id = id;
     this.productSku = productSku;
@@ -51,15 +55,19 @@ public class Order {
     this.clientCpf = clientCpf;
     this.status = status;
     this.paymentDetails = paymentDetails;
+    this.totalAmount = totalAmount;
   }
 
   public static Order createOrder(
       final String productSku,
       final Integer productQuantity,
       final String clientCpf,
-      final PaymentDetails paymentDetails) {
+      final PaymentDetails paymentDetails,
+      final BigDecimal unitPrice) {
 
-    validateDomain(productSku, productQuantity, clientCpf);
+    validateDomain(productSku, productQuantity, clientCpf, null);
+
+    final var totalAmount = unitPrice.multiply(BigDecimal.valueOf(productQuantity));
 
     return Order.builder()
         .productSku(productSku)
@@ -67,6 +75,7 @@ public class Order {
         .clientCpf(clientCpf)
         .status(OrderStatus.OPEN)
         .paymentDetails(paymentDetails)
+        .totalAmount(totalAmount)
         .build();
   }
 
@@ -94,34 +103,54 @@ public class Order {
     return paymentDetails;
   }
 
+  public BigDecimal getTotalAmount() {
+    return totalAmount;
+  }
+
   public Order changeOrderStatus(final OrderStatus status) {
     return toBuilder().status(status).build();
   }
 
+  public Order updatePaymentStatus(final PaymentStatus paymentStatus) {
+    return toBuilder().paymentDetails(paymentDetails.changePaymentStatus(paymentStatus)).build();
+  }
+
   private static void validateDomain(
-      final String productSku, final Integer productQuantity, final String clientCpf) {
+      final String productSku,
+      final Integer productQuantity,
+      final String clientCpf,
+      final BigDecimal totalAmount) {
     final List<ValidationDomain<?>> rules =
-        List.of(
-            new ValidationDomain<>(
-                productSku,
-                format(BLANK_MESSAGE_ERROR, "product_sku"),
-                List.of(Objects::isNull, String::isBlank)),
-            new ValidationDomain<>(
-                productSku, format(PATTERN_ERROR_MESSAGE, "product_sku"), List.of(PATTERN_SKU)),
-            new ValidationDomain<>(
-                productQuantity,
-                format(BLANK_MESSAGE_ERROR, "product_quantity"),
-                List.of(Objects::isNull)),
-            new ValidationDomain<>(
-                productQuantity,
-                format(NEGATIVE_MESSAGE_ERROR, "product_quantity"),
-                List.of(q -> q != null && q <= 0)),
-            new ValidationDomain<>(
-                clientCpf,
-                format(BLANK_MESSAGE_ERROR, "client_cpf"),
-                List.of(Objects::isNull, String::isBlank)),
-            new ValidationDomain<>(
-                clientCpf, format(PATTERN_ERROR_MESSAGE, "client_cpf"), List.of(PATTERN_CPF)));
+        new ArrayList<>(
+            List.of(
+                new ValidationDomain<>(
+                    productSku,
+                    format(BLANK_MESSAGE_ERROR, "product_sku"),
+                    List.of(Objects::isNull, String::isBlank)),
+                new ValidationDomain<>(
+                    productSku, format(PATTERN_ERROR_MESSAGE, "product_sku"), List.of(PATTERN_SKU)),
+                new ValidationDomain<>(
+                    productQuantity,
+                    format(BLANK_MESSAGE_ERROR, "product_quantity"),
+                    List.of(Objects::isNull)),
+                new ValidationDomain<>(
+                    productQuantity,
+                    format(NEGATIVE_MESSAGE_ERROR, "product_quantity"),
+                    List.of(q -> q != null && q <= 0)),
+                new ValidationDomain<>(
+                    clientCpf,
+                    format(BLANK_MESSAGE_ERROR, "client_cpf"),
+                    List.of(Objects::isNull, String::isBlank)),
+                new ValidationDomain<>(
+                    clientCpf, format(PATTERN_ERROR_MESSAGE, "client_cpf"), List.of(PATTERN_CPF))));
+
+    if (totalAmount != null) {
+      rules.add(
+          new ValidationDomain<>(
+              totalAmount,
+              String.format(NEGATIVE_MESSAGE_ERROR, "total_amount"),
+              List.of(t -> t != null && t.compareTo(BigDecimal.ZERO) <= 0)));
+    }
 
     final var errors = validate(rules);
 
