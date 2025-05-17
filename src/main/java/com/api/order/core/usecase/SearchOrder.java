@@ -12,7 +12,7 @@ public class SearchOrder {
 
   private final OrderGateway orderGateway;
 
-  public Optional<Order> execute(final Integer id) {
+  public Optional<Order> execute(final String id) {
     return this.orderGateway.findById(id);
   }
 }

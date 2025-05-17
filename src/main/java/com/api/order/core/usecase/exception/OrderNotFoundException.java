@@ -7,7 +7,7 @@ public class OrderNotFoundException extends BusinessException {
   private static final String ERROR_CODE = "NOT_FOUND";
   private static final String MESSAGE = "Stock for sku=[%s] not found.";
 
-  public OrderNotFoundException(final int id) {
+  public OrderNotFoundException(final String id) {
     super(format(MESSAGE, id), ERROR_CODE);
   }
 }

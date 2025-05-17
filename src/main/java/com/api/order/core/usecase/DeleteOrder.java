@@ -11,7 +11,7 @@ public class DeleteOrder {
 
   private final OrderGateway orderGateway;
 
-  public void execute(final Integer id) {
+  public void execute(final String id) {
     this.orderGateway.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
     this.orderGateway.delete(id);
   }

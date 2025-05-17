@@ -28,7 +28,7 @@ public class Order {
   private static final Predicate<String> PATTERN_CPF =
       n -> n == null || !Pattern.compile("\\d{11}").matcher(n).matches();
 
-  private Integer id;
+  private String id;
   private String productSku;
   private Integer productQuantity;
   private String clientCpf;
@@ -39,7 +39,7 @@ public class Order {
   public Order() {}
 
   public Order(
-      final Integer id,
+      final String id,
       final String productSku,
       final Integer productQuantity,
       final String clientCpf,
@@ -79,7 +79,7 @@ public class Order {
         .build();
   }
 
-  public Integer getId() {
+  public String getId() {
     return id;
   }
 

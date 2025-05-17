@@ -15,7 +15,7 @@ public class OrderEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Integer id;
+  private String id;
 
   @Column(name = "product_sku", nullable = false)
   private String productSku;

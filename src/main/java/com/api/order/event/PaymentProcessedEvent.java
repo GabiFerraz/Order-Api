@@ -1,3 +1,3 @@
 package com.api.order.event;
 
-public record PaymentProcessedEvent(int orderId, boolean success) {}
+public record PaymentProcessedEvent(String orderId, boolean success) {}

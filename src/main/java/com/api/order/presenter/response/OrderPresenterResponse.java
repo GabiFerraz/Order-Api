@@ -4,7 +4,7 @@ import lombok.Builder;
 
 @Builder
 public record OrderPresenterResponse(
-    int id,
+    String id,
     String productSku,
     int productQuantity,
     String clientCpf,

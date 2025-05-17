@@ -14,7 +14,7 @@ public class UpdateOrder {
 
   private final OrderGateway orderGateway;
 
-  public Order execute(final int id, final String orderStatus, final String paymentStatus) {
+  public Order execute(final String id, final String orderStatus, final String paymentStatus) {
     final var existingOrder =
         this.orderGateway.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
 

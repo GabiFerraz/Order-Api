@@ -1,3 +1,3 @@
 package com.api.order.event;
 
-public record StockReservedEvent(int orderId, boolean success) {}
+public record StockReservedEvent(String orderId, boolean success) {}

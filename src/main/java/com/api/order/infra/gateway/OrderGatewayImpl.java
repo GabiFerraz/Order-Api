@@ -52,7 +52,7 @@ public class OrderGatewayImpl implements OrderGateway {
 
   @Override
   @Transactional(readOnly = true)
-  public Optional<Order> findById(final Integer id) {
+  public Optional<Order> findById(final String id) {
     try {
       return orderRepository
           .findById(id)
@@ -92,7 +92,7 @@ public class OrderGatewayImpl implements OrderGateway {
 
   @Override
   @Transactional
-  public void delete(final Integer id) {
+  public void delete(final String id) {
     try {
       orderRepository.deleteById(id);
     } catch (IllegalArgumentException e) {

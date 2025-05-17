@@ -7,9 +7,9 @@ public interface OrderGateway {
 
   Order save(final Order order);
 
-  Optional<Order> findById(final Integer id);
+  Optional<Order> findById(final String id);
 
   Order update(final Order order);
 
-  void delete(final Integer id);
+  void delete(final String id);
 }

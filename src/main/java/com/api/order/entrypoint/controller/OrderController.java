@@ -40,7 +40,7 @@ public class OrderController {
 
   @GetMapping("/{id}")
   @ResponseStatus(HttpStatus.OK)
-  public ResponseEntity<Object> search(@Validated @PathVariable("id") final int id) {
+  public ResponseEntity<Object> search(@Validated @PathVariable("id") final String id) {
     final var response = this.searchOrder.execute(id);
 
     return response
@@ -54,7 +54,7 @@ public class OrderController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@Validated @PathVariable("id") final int id) {
+  public ResponseEntity<Void> delete(@Validated @PathVariable("id") final String id) {
     this.deleteOrder.execute(id);
 
     return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
