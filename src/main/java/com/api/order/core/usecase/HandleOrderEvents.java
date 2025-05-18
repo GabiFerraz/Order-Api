@@ -119,7 +119,18 @@ public class HandleOrderEvents {
           orderUpdated.getStatus(),
           orderUpdated.getPaymentDetails().getStatus());
 
-      orderGateway.update(orderUpdated);
+      this.orderGateway.update(orderUpdated);
+      return;
+    }
+
+    if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
+      log.info("Order is CLOSED_WITHOUT_STOCK, issuing refund for orderId: {}", order.getId());
+      this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
+
+      final var orderUpdated = order.updatePaymentStatus(PaymentStatus.REFUNDED);
+      log.info("Updating order to paymentStatus=REFUNDED: {}", orderUpdated.getStatus());
+
+      this.orderGateway.update(orderUpdated);
       return;
     }
 
