@@ -10,9 +10,11 @@ import com.api.order.mapper.OrderEntityMapper;
 import com.api.order.mapper.PaymentDetailsEntityMapper;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OrderGatewayImpl implements OrderGateway {
@@ -81,8 +83,10 @@ public class OrderGatewayImpl implements OrderGateway {
 
       entity.setStatus(order.getStatus().name());
       entity.getPaymentDetail().setStatus(order.getPaymentDetails().getStatus().name());
+      log.info("Updating order entity: {}", entity);
 
       final var savedResponse = orderRepository.save(entity);
+      log.info("Updated order entity: {}", savedResponse);
 
       return OrderEntityMapper.toDomain(savedResponse);
     } catch (IllegalArgumentException e) {
