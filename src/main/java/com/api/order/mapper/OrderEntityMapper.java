@@ -22,6 +22,7 @@ public class OrderEntityMapper {
             .clientCpf(domain.getClientCpf())
             .status(domain.getStatus().name())
             .totalAmount(domain.getTotalAmount())
+            .stockReserved(domain.isStockReserved())
             .build();
 
     orderEntity.setPaymentDetail(paymentDetailsEntity);
@@ -42,6 +43,7 @@ public class OrderEntityMapper {
         .status(OrderStatus.fromName(entity.getStatus()))
         .totalAmount(entity.getTotalAmount())
         .paymentDetails(paymentDetails)
+        .stockReserved(entity.isStockReserved())
         .build();
   }
 }

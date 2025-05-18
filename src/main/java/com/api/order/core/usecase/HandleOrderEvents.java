@@ -61,10 +61,14 @@ public class HandleOrderEvents {
       return;
     }
 
-    if (order.isStockReserved()) {
-      log.info("Stock already reserved for orderId: {}, skipping update", order.getId());
-      this.updateOrderStatus(order);
+    final var refreshedOrder =
+        orderGateway
+            .findById(event.orderId())
+            .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
 
+    if (refreshedOrder.isStockReserved()) {
+      log.info("Stock already reserved for orderId: {}, skipping update", refreshedOrder.getId());
+      updateOrderStatus(refreshedOrder);
       return;
     }
 
