@@ -25,33 +25,45 @@ public class HandleOrderEvents {
 
   @Transactional
   public void handleStockReservedEvent(final StockReservedEvent event) {
-    log.info("Received StockReservedEvent: {}", event);
+    log.info(
+        "Processing StockReservedEvent for orderId: {}, success: {}",
+        event.orderId(),
+        event.success());
 
     final var order =
-        orderGateway
+        this.orderGateway
             .findById(event.orderId())
             .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
-    log.info("Order found: {}", order);
+    log.info(
+        "Order before update: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+        order.getId(),
+        order.isStockReserved(),
+        order.getPaymentDetails().getStatus(),
+        order.getStatus());
 
     if (!event.success()) {
       log.info("Stock reservation failed, checking payment status");
       if (order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
-        log.info("Issuing refund for orderId: {}", order.getId());
-        eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
+        log.info(
+            "Issuing refund for orderId: {}, status: {}",
+            order.getId(),
+            order.getPaymentDetails().getStatus());
+
+        this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
       }
 
       final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITHOUT_STOCK);
-      log.info("Updating order to CLOSED_WITHOUT_STOCK: {}", orderUpdated);
+      log.info("Updating order to CLOSED_WITHOUT_STOCK: {}", orderUpdated.getStatus());
 
-      orderGateway.update(orderUpdated);
+      this.orderGateway.update(orderUpdated);
       return;
     }
 
     log.info("Stock reservation successful, setting stockReserved=true");
     final var orderUpdated = order.setStockReserved(true);
-    log.info("Updating order to stockReserved=true: {}", orderUpdated);
+    log.info("Updating order to stockReserved=true: {}", orderUpdated.isStockReserved());
 
-    orderGateway.update(orderUpdated);
+    this.orderGateway.update(orderUpdated);
 
     log.info("Order persisted with stockReserved=true and checking if order can be closed");
 
@@ -60,13 +72,21 @@ public class HandleOrderEvents {
 
   @Transactional
   public void handlePaymentProcessedEvent(final PaymentProcessedEvent event) {
-    log.info("Received PaymentProcessedEvent: {}", event);
+    log.info(
+        "Processing PaymentProcessedEvent for orderId: {}, success: {}",
+        event.orderId(),
+        event.success());
 
     final var order =
         orderGateway
             .findById(event.orderId())
             .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
-    log.info("Order found: {}", order);
+    log.info(
+        "Order before update: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+        order.getId(),
+        order.isStockReserved(),
+        order.getPaymentDetails().getStatus(),
+        order.getStatus());
 
     if (!event.success()) {
       log.info("Payment failed, checking stock reservation");
@@ -81,7 +101,10 @@ public class HandleOrderEvents {
           order
               .changeOrderStatus(OrderStatus.CLOSED_WITHOUT_CREDIT)
               .updatePaymentStatus(PaymentStatus.REJECTED);
-      log.info("Updating order to CLOSED_WITHOUT_CREDIT and payment REJECTED: {}", orderUpdated);
+      log.info(
+          "Updating order to CLOSED_WITHOUT_CREDIT: {} and payment REJECTED: {}",
+          orderUpdated.getStatus(),
+          orderUpdated.getPaymentDetails().getStatus());
 
       orderGateway.update(orderUpdated);
       return;
@@ -89,7 +112,7 @@ public class HandleOrderEvents {
 
     log.info("Payment successful, setting paymentStatus=APPROVED");
     final var orderUpdated = order.updatePaymentStatus(PaymentStatus.APPROVED);
-    log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated);
+    log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated.getStatus());
 
     orderGateway.update(orderUpdated);
 
@@ -99,16 +122,29 @@ public class HandleOrderEvents {
   }
 
   private void updateOrderStatus(final Order order) {
-    log.info("Checking if order status: {}", order);
+    log.info(
+        "Checking order status: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+        order.getId(),
+        order.isStockReserved(),
+        order.getPaymentDetails().getStatus(),
+        order.getStatus());
 
     if (order.isStockReserved()
         && order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
       final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITH_SUCCESS);
 
-      log.info("Updating order to CLOSED_WITH_SUCCESS: {}", orderUpdated);
+      log.info(
+          "Closing order with success: id={}, status={}",
+          orderUpdated.getId(),
+          orderUpdated.getStatus());
       orderGateway.update(orderUpdated);
     } else {
-      log.warn("Order not closed: {}", order);
+      log.warn(
+          "Order not closed: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+          order.getId(),
+          order.isStockReserved(),
+          order.getPaymentDetails().getStatus(),
+          order.getStatus());
     }
   }
 }

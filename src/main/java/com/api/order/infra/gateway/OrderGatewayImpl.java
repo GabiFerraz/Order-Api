@@ -76,17 +76,35 @@ public class OrderGatewayImpl implements OrderGateway {
   @Transactional
   public Order update(final Order order) {
     try {
+      log.info(
+          "Updating order: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+          order.getId(),
+          order.isStockReserved(),
+          order.getPaymentDetails().getStatus(),
+          order.getStatus());
       final var entity =
           orderRepository
               .findById(order.getId())
               .orElseThrow(() -> new GatewayException(format(FIND_ERROR_MESSAGE, order.getId())));
+      log.info(
+          "Entity before save: id={}, stockReserved={}", entity.getId(), entity.isStockReserved());
 
       entity.setStatus(order.getStatus().name());
       entity.getPaymentDetail().setStatus(order.getPaymentDetails().getStatus().name());
-      log.info("Updating order entity: {}", entity);
+      log.info(
+          "Updating order entity id={}, stockReserved={}, orderStatus={}, paymentStatus: {}",
+          entity.getId(),
+          entity.isStockReserved(),
+          entity.getStatus(),
+          entity.getPaymentDetail().getStatus());
 
       final var savedResponse = orderRepository.save(entity);
-      log.info("Updated order entity: {}", savedResponse);
+      log.info(
+          "Updated order entity id={}, stockReserved={}, orderStatus={}, paymentStatus: {}",
+          savedResponse.getId(),
+          savedResponse.isStockReserved(),
+          savedResponse.getStatus(),
+          savedResponse.getPaymentDetail().getStatus());
 
       return OrderEntityMapper.toDomain(savedResponse);
     } catch (IllegalArgumentException e) {
