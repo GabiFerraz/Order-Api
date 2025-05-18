@@ -99,7 +99,7 @@ public class OrderGatewayImpl implements OrderGateway {
           entity.getStatus(),
           entity.getPaymentDetail().getStatus());
 
-      final var savedResponse = orderRepository.save(entity);
+      final var savedResponse = orderRepository.saveAndFlush(entity);
       log.info(
           "Updated order entity id={}, stockReserved={}, orderStatus={}, paymentStatus: {}",
           savedResponse.getId(),

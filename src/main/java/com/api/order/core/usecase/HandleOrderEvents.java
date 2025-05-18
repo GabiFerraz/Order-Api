@@ -52,10 +52,19 @@ public class HandleOrderEvents {
         this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
       }
 
-      final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITHOUT_STOCK);
-      log.info("Updating order to CLOSED_WITHOUT_STOCK: {}", orderUpdated.getStatus());
+      if (order.getStatus() != OrderStatus.CLOSED_WITHOUT_STOCK) {
+        final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITHOUT_STOCK);
+        log.info("Updating order to CLOSED_WITHOUT_STOCK: {}", orderUpdated.getStatus());
 
-      this.orderGateway.update(orderUpdated);
+        this.orderGateway.update(orderUpdated);
+      }
+      return;
+    }
+
+    if (order.isStockReserved()) {
+      log.info("Stock already reserved for orderId: {}, skipping update", order.getId());
+      this.updateOrderStatus(order);
+
       return;
     }
 
@@ -78,7 +87,7 @@ public class HandleOrderEvents {
         event.success());
 
     final var order =
-        orderGateway
+        this.orderGateway
             .findById(event.orderId())
             .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
     log.info(
@@ -92,7 +101,7 @@ public class HandleOrderEvents {
       log.info("Payment failed, checking stock reservation");
       if (order.isStockReserved()) {
         log.info("Releasing stock for orderId: {}", order.getId());
-        eventPublisher.publish(
+        this.eventPublisher.publish(
             new ReleaseStockEvent(
                 order.getId(), order.getProductSku(), order.getProductQuantity()));
       }
@@ -137,7 +146,8 @@ public class HandleOrderEvents {
           "Closing order with success: id={}, status={}",
           orderUpdated.getId(),
           orderUpdated.getStatus());
-      orderGateway.update(orderUpdated);
+
+      this.orderGateway.update(orderUpdated);
     } else {
       log.warn(
           "Order not closed: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
