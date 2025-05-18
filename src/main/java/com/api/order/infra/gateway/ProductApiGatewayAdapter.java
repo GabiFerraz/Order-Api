@@ -3,6 +3,7 @@ package com.api.order.infra.gateway;
 import static java.lang.String.format;
 
 import com.api.order.core.gateway.ProductApiGateway;
+import com.api.order.infra.gateway.dto.ProductApiDto;
 import com.api.order.infra.gateway.exception.GatewayException;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +32,14 @@ public class ProductApiGatewayAdapter implements ProductApiGateway {
   }
 
   private BigDecimal callService(final String url) {
-    WebClient webClient = webClientBuilder.baseUrl(url).build();
+    final var webClient = webClientBuilder.baseUrl(url).build();
+    final var productResponse =
+        webClient.get().uri(url).retrieve().bodyToMono(ProductApiDto.class).block();
 
-    return webClient.get().retrieve().bodyToMono(BigDecimal.class).block();
+    if (productResponse == null || productResponse.getPrice() == null) {
+      throw new GatewayException("Product or price not found");
+    }
+
+    return productResponse.getPrice();
   }
 }

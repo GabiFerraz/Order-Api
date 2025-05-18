@@ -42,13 +42,11 @@ public class CreateOrder {
 
     eventPublisher.publish(
         new ReserveStockEvent(
-            savedOrder.getId().toString(),
-            savedOrder.getProductSku(),
-            savedOrder.getProductQuantity()));
+            savedOrder.getId(), savedOrder.getProductSku(), savedOrder.getProductQuantity()));
 
     eventPublisher.publish(
         new ProcessPaymentEvent(
-            savedOrder.getId().toString(),
+            savedOrder.getId(),
             savedOrder.getTotalAmount(),
             paymentDetails.getCardNumber(),
             paymentDetails.getPaymentMethod().name()));
