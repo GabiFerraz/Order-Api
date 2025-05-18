@@ -35,7 +35,7 @@ public class RabbitMQEventConsumer {
 
   @RabbitListener(queues = RabbitMQConfig.ORDER_RECEIVED_QUEUE)
   public void consumeOrderReceivedEvent(final OrderReceivedEvent event) {
-    log.info("Received OrderReceivedEvent for productSku: {}", event.productSku());
+    log.info("Processing OrderReceivedEvent for productSku: {}", event.productSku());
     try {
       final var orderDto =
           OrderDto.builder()
@@ -45,10 +45,13 @@ public class RabbitMQEventConsumer {
               .paymentDetails(new PaymentDetailsDto(event.paymentMethod(), event.cardNumber()))
               .build();
 
-      createOrder.execute(orderDto);
-      log.info("Order processed successfully for event: {}", event);
+      this.createOrder.execute(orderDto);
+      log.info("Order processed successfully for event with productSku: {}", event.productSku());
     } catch (Exception e) {
-      log.error("Failed to process OrderReceivedEvent for event: {}", event, e);
+      log.error(
+          "Failed to process OrderReceivedEvent for event with productSku: {}",
+          event.productSku(),
+          e);
       throw new RuntimeException("Failed to process order", e);
     }
   }
