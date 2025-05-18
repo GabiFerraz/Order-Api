@@ -11,97 +11,84 @@ import com.api.order.event.RefundPaymentEvent;
 import com.api.order.event.ReleaseStockEvent;
 import com.api.order.event.StockReservedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class HandleOrderEvents {
 
   private final OrderGateway orderGateway;
   private final EventPublisher eventPublisher;
 
-  private static class OrderState {
-    boolean stockReserved;
-    boolean paymentApproved;
-
-    OrderState() {
-      this.stockReserved = false;
-      this.paymentApproved = false;
-    }
-  }
-
+  @Transactional
   public void handleStockReservedEvent(final StockReservedEvent event) {
-    var order =
+    log.info("Received StockReservedEvent for orderId: {}", event.orderId());
+
+    final var order =
         orderGateway
             .findById(event.orderId())
             .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
 
-    OrderState state = getOrderState(order);
-
     if (!event.success()) {
-      if (state.paymentApproved) {
+      if (order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
         eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
       }
 
-      order = order.changeOrderStatus(OrderStatus.CLOSED_WITHOUT_STOCK);
-      orderGateway.save(order);
+      final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITHOUT_STOCK);
 
+      orderGateway.update(orderUpdated);
       return;
     }
 
-    state.stockReserved = true;
+    final var orderUpdated = order.setStockReserved(true);
 
-    this.updateOrderStatus(order, state);
+    orderGateway.update(orderUpdated);
+
+    this.updateOrderStatus(orderUpdated);
   }
 
-  public void handlePaymentProcessedEvent(PaymentProcessedEvent event) {
-    var order =
+  @Transactional
+  public void handlePaymentProcessedEvent(final PaymentProcessedEvent event) {
+    log.info("Received PaymentProcessedEvent for orderId: {}", event.orderId());
+
+    final var order =
         orderGateway
             .findById(event.orderId())
             .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
 
-    OrderState state = getOrderState(order);
-
     if (!event.success()) {
-      if (state.stockReserved) {
+      if (order.isStockReserved()) {
         eventPublisher.publish(
             new ReleaseStockEvent(
                 order.getId(), order.getProductSku(), order.getProductQuantity()));
       }
 
-      order =
+      final var orderUpdated =
           order
               .changeOrderStatus(OrderStatus.CLOSED_WITHOUT_CREDIT)
               .updatePaymentStatus(PaymentStatus.REJECTED);
-      orderGateway.save(order);
 
+      orderGateway.update(orderUpdated);
       return;
     }
 
-    state.paymentApproved = true;
-    order = order.updatePaymentStatus(PaymentStatus.APPROVED);
+    final var orderUpdated = order.updatePaymentStatus(PaymentStatus.APPROVED);
 
-    this.updateOrderStatus(order, state);
+    orderGateway.update(orderUpdated);
+
+    this.updateOrderStatus(orderUpdated);
   }
 
-  private OrderState getOrderState(final Order order) {
-    OrderState state = new OrderState();
+  private void updateOrderStatus(final Order order) {
+    if (order.isStockReserved()
+        && order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
+      final var orderUpdated = order.changeOrderStatus(OrderStatus.CLOSED_WITH_SUCCESS);
 
-    state.stockReserved =
-        order.getStatus() == OrderStatus.CLOSED_WITH_SUCCESS
-            || order.getStatus() == OrderStatus.CLOSED_WITHOUT_CREDIT;
-    state.paymentApproved =
-        order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED
-            || order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK;
-
-    return state;
-  }
-
-  private void updateOrderStatus(Order order, final OrderState state) {
-    if (state.stockReserved && state.paymentApproved) {
-      order = order.changeOrderStatus(OrderStatus.CLOSED_WITH_SUCCESS);
-
-      orderGateway.save(order);
+      log.info("Order closed with success: {}", orderUpdated);
+      orderGateway.update(orderUpdated);
     }
   }
 }

@@ -35,4 +35,7 @@ public class OrderEntity {
   @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "payment_details_id", referencedColumnName = "id", nullable = false)
   private PaymentDetailsEntity paymentDetail;
+
+  @Column(name = "stock_reserved")
+  private boolean stockReserved = false;
 }

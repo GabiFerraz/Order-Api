@@ -35,6 +35,7 @@ public class Order {
   private OrderStatus status;
   private PaymentDetails paymentDetails;
   private BigDecimal totalAmount;
+  private boolean stockReserved;
 
   public Order() {}
 
@@ -45,7 +46,8 @@ public class Order {
       final String clientCpf,
       final OrderStatus status,
       final PaymentDetails paymentDetails,
-      final BigDecimal totalAmount) {
+      final BigDecimal totalAmount,
+      final boolean stockReserved) {
 
     validateDomain(productSku, productQuantity, clientCpf, totalAmount);
 
@@ -56,6 +58,7 @@ public class Order {
     this.status = status;
     this.paymentDetails = paymentDetails;
     this.totalAmount = totalAmount;
+    this.stockReserved = stockReserved;
   }
 
   public static Order createOrder(
@@ -76,6 +79,7 @@ public class Order {
         .status(OrderStatus.OPEN)
         .paymentDetails(paymentDetails)
         .totalAmount(totalAmount)
+        .stockReserved(false)
         .build();
   }
 
@@ -105,6 +109,14 @@ public class Order {
 
   public BigDecimal getTotalAmount() {
     return totalAmount;
+  }
+
+  public boolean isStockReserved() {
+    return stockReserved;
+  }
+
+  public Order setStockReserved(boolean stockReserved) {
+    return toBuilder().stockReserved(stockReserved).build();
   }
 
   public Order changeOrderStatus(final OrderStatus status) {
