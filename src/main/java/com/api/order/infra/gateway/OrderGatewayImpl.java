@@ -91,6 +91,7 @@ public class OrderGatewayImpl implements OrderGateway {
 
       entity.setStatus(order.getStatus().name());
       entity.getPaymentDetail().setStatus(order.getPaymentDetails().getStatus().name());
+      entity.setStockReserved(order.isStockReserved());
       log.info(
           "Updating order entity id={}, stockReserved={}, orderStatus={}, paymentStatus: {}",
           entity.getId(),
