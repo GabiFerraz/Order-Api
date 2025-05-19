@@ -42,6 +42,15 @@ public class HandleOrderEvents {
         order.getPaymentDetails().getStatus(),
         order.getStatus());
 
+    if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_CREDIT
+        || order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
+      log.info(
+          "Order id={} is already closed with status={}, skipping StockReservedEvent",
+          order.getId(),
+          order.getStatus());
+      return;
+    }
+
     if (!event.success()) {
       log.info("Stock reservation failed, checking payment status");
       if (order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
@@ -84,7 +93,7 @@ public class HandleOrderEvents {
     this.updateOrderStatus(orderUpdated);
   }
 
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void handlePaymentProcessedEvent(final PaymentProcessedEvent event) {
     log.info(
         "Processing PaymentProcessedEvent for orderId: {}, success: {}",
@@ -104,12 +113,10 @@ public class HandleOrderEvents {
 
     if (!event.success()) {
       log.info("Payment failed, checking stock reservation");
-      if (order.isStockReserved()) {
-        log.info("Releasing stock for orderId: {}", order.getId());
-        this.eventPublisher.publish(
-            new ReleaseStockEvent(
-                order.getId(), order.getProductSku(), order.getProductQuantity()));
-      }
+
+      log.info("Publishing ReleaseStockEvent for orderId: {}", order.getId());
+      this.eventPublisher.publish(
+          new ReleaseStockEvent(order.getId(), order.getProductSku(), order.getProductQuantity()));
 
       final var orderUpdated =
           order
