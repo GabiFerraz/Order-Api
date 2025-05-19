@@ -10,6 +10,7 @@ import com.api.order.event.PaymentProcessedEvent;
 import com.api.order.event.RefundPaymentEvent;
 import com.api.order.event.ReleaseStockEvent;
 import com.api.order.event.StockReservedEvent;
+import com.api.order.infra.gateway.exception.GatewayException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -53,12 +54,12 @@ public class HandleOrderEvents {
 
     if (!event.success()) {
       log.info("Stock reservation failed, checking payment status");
-      if (order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED) {
+      if (order.getPaymentDetails().getStatus() == PaymentStatus.APPROVED
+          || order.getPaymentDetails().getStatus() == PaymentStatus.PENDING) {
         log.info(
             "Issuing refund for orderId: {}, status: {}",
             order.getId(),
             order.getPaymentDetails().getStatus());
-
         this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
       }
 
@@ -100,57 +101,80 @@ public class HandleOrderEvents {
         event.orderId(),
         event.success());
 
-    final var order =
-        this.orderGateway
-            .findById(event.orderId())
-            .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
-    log.info(
-        "Order before update: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
-        order.getId(),
-        order.isStockReserved(),
-        order.getPaymentDetails().getStatus(),
-        order.getStatus());
-
-    if (!event.success()) {
-      log.info("Payment failed, checking stock reservation");
-
-      log.info("Publishing ReleaseStockEvent for orderId: {}", order.getId());
-      this.eventPublisher.publish(
-          new ReleaseStockEvent(order.getId(), order.getProductSku(), order.getProductQuantity()));
-
-      final var orderUpdated =
-          order
-              .changeOrderStatus(OrderStatus.CLOSED_WITHOUT_CREDIT)
-              .updatePaymentStatus(PaymentStatus.REJECTED);
+    int retries = 3;
+    while (retries > 0) {
+      final var order =
+          this.orderGateway
+              .findById(event.orderId())
+              .orElseThrow(() -> new OrderNotFoundException(event.orderId()));
       log.info(
-          "Updating order to CLOSED_WITHOUT_CREDIT: {} and payment REJECTED: {}",
-          orderUpdated.getStatus(),
-          orderUpdated.getPaymentDetails().getStatus());
+          "Order before update: id={}, stockReserved={}, paymentStatus={}, orderStatus={}",
+          order.getId(),
+          order.isStockReserved(),
+          order.getPaymentDetails().getStatus(),
+          order.getStatus());
+
+      // Se o pedido está OPEN, tentar novamente após um pequeno atraso
+      if (order.getStatus() == OrderStatus.OPEN && retries > 1) {
+        log.warn(
+            "Order id={} is still OPEN, retrying after delay (retries left: {})",
+            order.getId(),
+            retries - 1);
+        retries--;
+        try {
+          Thread.sleep(100); // Atraso de 100ms para dar tempo ao StockReservedEvent
+        } catch (InterruptedException ie) {
+          log.error("Interrupted during retry delay", ie);
+        }
+        continue;
+      }
+
+      if (!event.success()) {
+        log.info("Payment failed, checking stock reservation");
+        log.info("Publishing ReleaseStockEvent for orderId: {}", order.getId());
+        this.eventPublisher.publish(
+            new ReleaseStockEvent(
+                order.getId(), order.getProductSku(), order.getProductQuantity()));
+
+        final var orderUpdated =
+            order
+                .changeOrderStatus(OrderStatus.CLOSED_WITHOUT_CREDIT)
+                .updatePaymentStatus(PaymentStatus.REJECTED);
+        log.info(
+            "Updating order to CLOSED_WITHOUT_CREDIT: {} and payment REJECTED: {}",
+            orderUpdated.getStatus(),
+            orderUpdated.getPaymentDetails().getStatus());
+
+        this.orderGateway.update(orderUpdated);
+        return;
+      }
+
+      if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
+        log.info("Order is CLOSED_WITHOUT_STOCK, issuing refund for orderId: {}", order.getId());
+        this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
+
+        final var orderUpdated = order.updatePaymentStatus(PaymentStatus.REFUNDED);
+        log.info("Updating order to paymentStatus=REFUNDED: {}", orderUpdated.getStatus());
+
+        this.orderGateway.update(orderUpdated);
+        return;
+      }
+
+      log.info("Payment successful, setting paymentStatus=APPROVED");
+      final var orderUpdated = order.updatePaymentStatus(PaymentStatus.APPROVED);
+      log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated.getStatus());
 
       this.orderGateway.update(orderUpdated);
+
+      log.info("Order persisted with paymentStatus=APPROVED and checking if order can be closed");
+
+      updateOrderStatus(orderUpdated);
       return;
     }
 
-    if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
-      log.info("Order is CLOSED_WITHOUT_STOCK, issuing refund for orderId: {}", order.getId());
-      this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
-
-      final var orderUpdated = order.updatePaymentStatus(PaymentStatus.REFUNDED);
-      log.info("Updating order to paymentStatus=REFUNDED: {}", orderUpdated.getStatus());
-
-      this.orderGateway.update(orderUpdated);
-      return;
-    }
-
-    log.info("Payment successful, setting paymentStatus=APPROVED");
-    final var orderUpdated = order.updatePaymentStatus(PaymentStatus.APPROVED);
-    log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated.getStatus());
-
-    orderGateway.update(orderUpdated);
-
-    log.info("Order persisted with paymentStatus=APPROVED and checking if order can be closed");
-
-    this.updateOrderStatus(orderUpdated);
+    log.error("Max retries reached for orderId: {}, order still OPEN", event.orderId());
+    throw new GatewayException(
+        "Failed to process PaymentProcessedEvent after retries: " + event.orderId());
   }
 
   private void updateOrderStatus(final Order order) {
