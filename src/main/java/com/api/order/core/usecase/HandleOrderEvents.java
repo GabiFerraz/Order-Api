@@ -13,6 +13,7 @@ import com.api.order.event.StockReservedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -23,7 +24,7 @@ public class HandleOrderEvents {
   private final OrderGateway orderGateway;
   private final EventPublisher eventPublisher;
 
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void handleStockReservedEvent(final StockReservedEvent event) {
     log.info(
         "Processing StockReservedEvent for orderId: {}, success: {}",

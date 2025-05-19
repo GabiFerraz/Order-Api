@@ -31,6 +31,8 @@ public class RabbitMQGateway implements EventPublisher {
             default -> throw new IllegalArgumentException("Unknown event: " + event.getClass());
           };
 
+      log.info(
+          "Publishing event: {} with routingKey: {}", event.getClass().getSimpleName(), routingKey);
       this.rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, routingKey, event);
     } catch (Exception e) {
       log.error("Failed to publish event: {}", event, e);
