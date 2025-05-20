@@ -91,7 +91,7 @@ Os endpoints estão documentados via **Swagger**:
 curl --location 'localhost:8084/api/orders/1'
 ```
 
-2. **Delete de Cliente:**
+2. **Delete de Pedidos:**
 ```json
 curl --location --request DELETE 'localhost:8084/api/orders/1'
 ```
