@@ -114,7 +114,23 @@ public class HandleOrderEvents {
           order.getPaymentDetails().getStatus(),
           order.getStatus());
 
-      // Se o pedido está OPEN, tentar novamente após um pequeno atraso
+      if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
+        log.info(
+            "Order is CLOSED_WITHOUT_STOCK, ensuring paymentStatus=REFUNDED for orderId: {}",
+            order.getId());
+
+        if (order.getPaymentDetails().getStatus() != PaymentStatus.REFUNDED) {
+          this.eventPublisher.publish(
+              new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
+
+          final var orderUpdated = order.updatePaymentStatus(PaymentStatus.REFUNDED);
+          log.info("Updating order to paymentStatus=REFUNDED: {}", orderUpdated.getStatus());
+
+          this.orderGateway.update(orderUpdated);
+        }
+        return;
+      }
+
       if (order.getStatus() == OrderStatus.OPEN && retries > 1) {
         log.warn(
             "Order id={} is still OPEN, retrying after delay (retries left: {})",
@@ -122,7 +138,7 @@ public class HandleOrderEvents {
             retries - 1);
         retries--;
         try {
-          Thread.sleep(100); // Atraso de 100ms para dar tempo ao StockReservedEvent
+          Thread.sleep(100);
         } catch (InterruptedException ie) {
           log.error("Interrupted during retry delay", ie);
         }
@@ -149,21 +165,10 @@ public class HandleOrderEvents {
         return;
       }
 
-      if (order.getStatus() == OrderStatus.CLOSED_WITHOUT_STOCK) {
-        log.info("Order is CLOSED_WITHOUT_STOCK, issuing refund for orderId: {}", order.getId());
-        this.eventPublisher.publish(new RefundPaymentEvent(order.getId(), order.getTotalAmount()));
-
-        final var orderUpdated = order.updatePaymentStatus(PaymentStatus.REFUNDED);
-        log.info("Updating order to paymentStatus=REFUNDED: {}", orderUpdated.getStatus());
-
-        this.orderGateway.update(orderUpdated);
-        return;
-      }
-
       log.info("Payment successful, setting paymentStatus=APPROVED");
       final var orderUpdated = order.updatePaymentStatus(PaymentStatus.APPROVED);
-      log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated.getStatus());
 
+      log.info("Updating order to paymentStatus=APPROVED: {}", orderUpdated.getStatus());
       this.orderGateway.update(orderUpdated);
 
       log.info("Order persisted with paymentStatus=APPROVED and checking if order can be closed");
