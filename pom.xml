@@ -130,8 +130,12 @@
 				<version>0.8.10</version>
 				<configuration>
 					<excludes>
+						<exclude>**/com/api/order/config/**</exclude>
 						<exclude>**/com/api/order/core/dto/**</exclude>
 						<exclude>**/com/api/order/entrypoint/config/**</exclude>
+						<exclude>**/com/api/order/event/**</exclude>
+						<exclude>**/com/api/order/infra/gateway/dto/**</exclude>
+						<exclude>**/com/api/order/mapper/**</exclude>
 						<exclude>**/com/api/order/presenter/**</exclude>
 						<exclude>**/com/api/order/OrderApplication**</exclude>
 						<exclude>**/com/api/order/core/domain/exception/ErrorDetail**</exclude>

@@ -1,4 +1,4 @@
-package com.api.order.entrypoint.controller.consumer;
+package com.api.order.entrypoint.consumer;
 
 import com.api.order.config.RabbitMQConfig;
 import com.api.order.core.dto.OrderDto;
